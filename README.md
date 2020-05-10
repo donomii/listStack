@@ -12,7 +12,7 @@
 
  # Examples
 
-	  char mem[500];
+	  char mem[1000];
 	  list_stack ls   = new_list_stack(mem, 1000);
 	  const char  hello_world[]  = "Hello World.   ";
 	  const char  greet[] =        "How are you today? ";
