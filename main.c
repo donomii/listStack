@@ -47,6 +47,7 @@ crashing while accessing the list, check for off-by-one errors.
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 
 #ifdef ARDUINO
 #include <Arduino.h>
@@ -168,7 +169,7 @@ void ls_test() {
   strcpy(target, greet);
 
   //Allocate new list element, and copy the source data into the list_stack
-  ls_cons(hello_world, strlen(hello_world) + 1, ls);
+  ls_cons((void *)hello_world, strlen(hello_world) + 1, ls);
 
   for (ptr i = ls_start(ls); !ls_is_end(i); i=ls_tail(i)){
     //ls_head returns a pointer to the data for element i
