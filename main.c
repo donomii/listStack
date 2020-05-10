@@ -1,4 +1,3 @@
-#include <Arduino.h>
 
 /* list_stack - A linked list implemented sequentially in memory
 
@@ -44,11 +43,21 @@ the end of the allocated space, you will overwrite pointers and corrupt the list
 crashing while accessing the list, check for off-by-one errors.
 
 */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
+#ifdef ARDUINO
+#include <Arduino.h>
 #define ALIGN 4
+typedef ls_uint uint;  // intptr_t?
+#define warn(...) Serial.print(__VA_ARGS__)
+#else
+#define warn(...) printf(__VA_ARGS__)
+#define ALIGN 1
+typedef   intptr_t ls_uint;
+#endif
 
 typedef void * ptr;
 typedef struct ls_header
@@ -60,8 +69,8 @@ typedef struct ls_header
 typedef ls_header * list_stack;
 
 list_stack new_list_stack(void * mem, int size) {
-   if ((uint)mem %ALIGN !=0 ) {
-    Serial.print("Warning! Destination address not aligned!\n");
+   if ((ls_uint)mem %ALIGN !=0 ) {
+    warn("Warning! Destination address not aligned!\n");
   }
   ls_header* ls = (ls_header *) mem;
   ls->size = size;
@@ -104,43 +113,43 @@ ptr ls_tail(ptr h) {
 }
 
 int ls_room_for(int size, list_stack ls){
-  return ls +ls->size > ls->head+2*sizeof(ptr)+size;
+  return (ptr )(ls +ls->size) > (ptr )(ls->head+2*sizeof(ptr)+size);
 }
 
-list_stack ls_cons(void * thing, uint size, list_stack ls) {
+list_stack ls_cons(void * thing, ls_uint size, list_stack ls) {
   if (!ls_room_for(size,ls)){
-    printf("Data is too large for stack\n");
+    warn("Data is too large for stack\n");
     return NULL;
   }
   ptr head = ls->head;
   ptr start = head + sizeof(ptr);
-  if ((uint)start %ALIGN !=0 ) {
-    Serial.print("Warning! Destination address not aligned!\n");
+  if ((ls_uint)start %ALIGN !=0 ) {
+    warn("Warning! Destination address not aligned!\n");
   }
-   if ( (uint)thing%ALIGN!=0) {
-    Serial.print("Warning! Source address not aligned!\n");
+   if ( (ls_uint)thing%ALIGN!=0) {
+    warn("Warning! Source address not aligned!\n");
   }
   memcpy(start, thing, size);
-  ptr* new_head = (ptr *)((uint)start + (uint)size);
+  ptr* new_head = (ptr *)((ls_uint)start + (ls_uint)size);
   *new_head = head;
   ls->head = new_head;
   return ls;
 }
 
 /* Create a list with an empty data section.  Returns the pointer to the empty data section */
-ptr ls_cons_blank(uint size, list_stack ls){
+ptr ls_cons_blank(ls_uint size, list_stack ls){
   if (!ls_room_for(size,ls)){
-    printf("Data is too large for stack\n");
+    warn("Data is too large for stack\n");
     return NULL;
   }
   
-  if ((uint)size %ALIGN !=0 ) {
-    Serial.printf("Warning! Size(%d) is not a multiple of alignment(%d)!\n",size, ALIGN);
+  if (( ls_uint )size %ALIGN !=0 ) {
+    warn("Warning! Size(%d) is not a multiple of alignment(%d)!\n",size, ALIGN);
   }
   ptr head = ls->head;
   ptr start = head + sizeof(ptr);
-  if ((uint)start %ALIGN !=0 ) {
-    Serial.print("Warning! Destination address not aligned!\n");
+  if (( ls_uint )start %ALIGN !=0 ) {
+    warn("Warning! Destination address not aligned!\n");
   }
   ptr* new_head = (ptr *)((ptr)start + size);
   *new_head = head;
@@ -163,30 +172,23 @@ void ls_test() {
   strcpy(target, hello_world);
 
   for (ptr i = ls_start(ls); !ls_is_end(i); i=ls_tail(i)){
-    Serial.printf("%s",(char *)ls_head(i));
+    warn("%s",(char *)ls_head(i));
   }
-  Serial.printf("\n");
-  //char * s1 = (char *)car(start(ls));
-  //char * s2 = (char *)car(cdr(start(ls)));
-  //printf("%s. %s\n", s1, s2);
-  //Serial.printf("%s. %s\n", s1, s2);
-
-  //printf("Is last? %d\n", is_last(cdr(start(ls))));
-
-  //ptr ** s3 = (ptr **) cdr(cdr(start(ls)));
-  //printf("End of list: %p\n", *s3);
+  warn("\n");
 }
 
 
 
 void setup() {
   // put your setup code here, to run once:
+#ifdef ARDUINO
   Serial.begin(9600);
   Serial.print("Starting tests....\n");
   Serial.print("Pointer size is: ");
   Serial.println(sizeof(ptr));
-  Serial.print("uint size is: ");
-  Serial.println(sizeof(uint));
+  Serial.print("ls_uint size is: ");
+  Serial.println(sizeof(ls_uint));
+#endif
   ls_test();
 }
 
@@ -194,3 +196,9 @@ void loop() {
   // put your main code here, to run repeatedly:
 
 }
+
+/*
+int main() {
+	ls_test();
+}
+*/
