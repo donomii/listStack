@@ -2,7 +2,7 @@
  A linked list implemented sequentially in memory
  
 ## Features
- A linked list where all the elements are laid out sequentially in memory,                                               to avoid malloc and free.
+ A linked list where all the elements are laid out sequentially in memory,                                               to avoid malloc and free.  The elements can be variable size.
 
  Why?  To provide a linked list implementation that works in embedded systems, without needing                           memory management.
 
