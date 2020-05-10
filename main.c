@@ -145,7 +145,7 @@ ptr ls_cons_blank(ls_uint size, list_stack ls){
   }
   
   if (( ls_uint )size %ALIGN !=0 ) {
-    warn("Warning! Size(%d) is not a multiple of alignment(%d)!\n",size, ALIGN);
+    warn("Warning! Size is not a multiple of alignment(%d)!\n", ALIGN);
   }
   ptr head = ls->head;
   ptr start = head + sizeof(ptr);
