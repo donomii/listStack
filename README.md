@@ -8,24 +8,26 @@
 
 Include `list_stack.h`.
 
-- `new_list_stack(mem, size)` initializes the buffer and returns a stack handle, or `0` when `mem` is null, unaligned, or too small.
-- `ls_cons(data, size, ls)` copies `size` bytes into a new entry and returns `ls`, or `0` when the entry cannot fit.
-- `ls_cons_blank(size, ls)` creates a new entry and returns its writable payload pointer, or `0` when the entry cannot fit.
-- `ls_start(ls)` returns the newest entry node.
-- `ls_head(node)` and `ls_car(node)` return the payload pointer for a node.
-- `ls_tail(node)` and `ls_cdr(node)` return the next node.
-- `ls_is_end(node)` returns true when iteration reached the end.
-- `ls_data_size(node)` returns the original payload size for a node.
-- `ls_room_for(size, ls)` reports whether one more entry with `size` payload bytes can fit.
-- `ls_pop(ls)` removes the newest entry and returns `1`, or returns `0` when the stack is empty or invalid.
-- `ls_clear(ls)` removes all entries.
-- `ls_alignment()` returns the required memory alignment.
-- `ls_header_size()` returns the aligned control-header size.
-- `ls_entry_overhead()` returns the aligned per-entry metadata size.
-- `ls_align_size(size)` returns the payload size rounded up to stack alignment.
-- `ls_capacity(ls)` returns the bytes available for entries after the header.
-- `ls_used(ls)` returns entry bytes currently used.
-- `ls_available(ls)` returns the largest single payload that can be inserted next.
+- `new_list_stack(mem, size) -> handle`: initialize `mem` as a list stack. Returns `0` when `mem` is null, unaligned, or too small.
+- `ls_cons(payload, size, handle) -> handle`: push a copy of `payload`. Returns `0` when `payload` is null with nonzero `size`, or when the node cannot fit.
+- `ls_cons_blank(size, handle) -> payload`: push an uninitialized node and return its writable payload. Returns `0` when the node cannot fit.
+- `ls_start(handle) -> node`: return the newest node. Returns `0` when the handle has no nodes.
+- `ls_head(node) -> payload`: return the node payload. Returns `0` when `node` is `0`.
+- `ls_car(node) -> payload`: same as `ls_head`.
+- `ls_tail(node) -> node`: return the next node. Returns `0` at the end.
+- `ls_cdr(node) -> node`: same as `ls_tail`.
+- `ls_is_end(node) -> int`: return `1` when `node` is `0`, otherwise `0`.
+- `ls_data_size(node) -> size`: return the node payload size. Returns `0` when `node` is `0`.
+- `ls_room_for(size, handle) -> int`: return `1` when a node with `size` payload bytes can fit, otherwise `0`.
+- `ls_pop(handle) -> int`: remove the newest node. Returns `1` when a node was removed, otherwise `0`.
+- `ls_clear(handle) -> void`: remove all nodes from the handle.
+- `ls_alignment() -> size`: return the required buffer and node alignment.
+- `ls_header_size() -> size`: return the aligned handle header size.
+- `ls_entry_overhead() -> size`: return the aligned per-node metadata size.
+- `ls_align_size(size) -> size`: return `size` rounded up to stack alignment.
+- `ls_capacity(handle) -> size`: return the byte capacity available for nodes after the handle header.
+- `ls_used(handle) -> size`: return the bytes currently used by nodes.
+- `ls_available(handle) -> size`: return the largest payload size that can fit in one new node.
 
 ## Example
 
