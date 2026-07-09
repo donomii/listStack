@@ -93,4 +93,4 @@ Returned payload pointers point into the caller-owned buffer. They remain valid 
 
 ## License
 
-This project is licensed under GPL-3.0-only. 
+This project is licensed under GPL-3.0 or later.
