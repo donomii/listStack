@@ -1,0 +1,16 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cc: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - run: make CC=${{ matrix.cc }}
+      - run: make test CC=${{ matrix.cc }}

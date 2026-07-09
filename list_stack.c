@@ -1,205 +1,280 @@
+#include "list_stack.h"
 
-/* list_stack - A linked list implemented sequentially in memory
-
-  A linked list where all the elements are laid out sequentially in memory,
-  to avoid malloc and free.
-
-  Why?  To provide a linked list implementation that works in embedded systems, without needing
-  memory management.
-
-
-
-  To use this, you must first allocate a chunk of memory, then pass it
-  to new_list_stack.  new_list_stack creates a small header structure at
-  the start of that memory, and the rest is used for the list.
-
-  Scheme and Lisp programmers will be familiar with the basic functions
-  to access the list:
-
-  car  - return the data from the first element
-  head - return the data from the first element
-
-  cdr  - return the rest of the list, starting with the second element
-  tail - return the rest of the list, starting with the second element
-
-  cons - add an element to the front of the list, returns a pointer to the start of the list
-  cons_blank - add a new entry that is blank, return a pointer to the start of the blank data area
-
-  pop - Discard the first element of the list (this is the stack part)
-
-  start   - returns a pointer to the start of the list, when given the handle
-  is_last - check if the current list element is the last element (see loop example)
-  room_for - check to see if there is enough space left for your data
-
-
-  list_stack stores some control information at the start of the memory, in a control block.  The pointer returned from 
-  new_list_stack(mem, size) is NOT the start of the list, it is the pointer to the control block.  To get
-  the start of the list, call start(handle)
-
-  new_list_stack - returns a handle to the list_stack
-
-Note:  list_stack stores pointers after the data area.  If you write into the data area and write past
-the end of the allocated space, you will overwrite pointers and corrupt the list.  If your program starts
-crashing while accessing the list, check for off-by-one errors.
-
-*/
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include <stdint.h>
+#include <string.h>
 
-#ifdef ARDUINO
-#include <Arduino.h>
-#define ALIGN 4
-typedef ls_uint uint;  // intptr_t?
-#define warn(...) Serial.print(__VA_ARGS__)
-#else
-#define warn(...) printf(__VA_ARGS__)
-#define ALIGN 1
-typedef   intptr_t ls_uint;
-#endif
+#define LS_ALIGNMENT sizeof(uintptr_t)
 
-typedef void * ptr;
-typedef struct ls_header
+struct ls_header
 {
-  int size;
+  size_t size;
+  size_t used;
   ptr head;
-  ptr last;
-} ls_header;
-typedef ls_header * list_stack;
+};
 
-list_stack new_list_stack(void * mem, int size) {
-   if ((ls_uint)mem %ALIGN !=0 ) {
-    warn("Warning! Destination address not aligned!\n");
+struct ls_node
+{
+  ptr previous;
+  size_t size;
+};
+
+static int ls_align_checked(size_t size, size_t *aligned)
+{
+  size_t remainder = size % LS_ALIGNMENT;
+  if (remainder == 0) {
+    *aligned = size;
+    return 1;
+  } else {
+    size_t padding = LS_ALIGNMENT - remainder;
+    if (size > SIZE_MAX - padding) {
+      return 0;
+    } else {
+      *aligned = size + padding;
+      return 1;
+    }
   }
-  ls_header* ls = (ls_header *) mem;
-  ls->size = size;
-  ls->last = NULL;
-  ls->head = &ls->last;
-  return ls;
 }
 
-ptr ls_start (list_stack ls) {
-  return ls->head;
+static size_t ls_align_down(size_t size)
+{
+  return size - (size % LS_ALIGNMENT);
 }
 
-ptr ls_car(ptr h) {
-  ptr ** head = (ptr **) h;
-  ptr next = *head;
-  if (next == NULL) {
-    return NULL;
+static size_t ls_node_header_size(void)
+{
+  size_t aligned = 0;
+  if (ls_align_checked(sizeof(struct ls_node), &aligned)) {
+    return aligned;
+  } else {
+    return 0;
   }
-  ptr data = next + sizeof(ptr);
-  return data;
 }
 
-ptr ls_head(ptr h) {
-  return ls_car(h);
+static ptr ls_data_start(list_stack ls)
+{
+  return (ptr)ls + ls_header_size();
 }
 
-ptr ls_cdr(ptr h) {
-  ptr ** head = (ptr **) h;
-  ptr next = *head;
-  return next;
+static int ls_has_valid_bounds(list_stack ls)
+{
+  return ls != 0 && ls->size >= ls_header_size() && ls->used <= ls->size - ls_header_size();
 }
 
-
-int ls_is_end(ptr h) {
-  return ls_cdr(h) == NULL;
+size_t ls_alignment(void)
+{
+  return LS_ALIGNMENT;
 }
 
-ptr ls_tail(ptr h) {
-  return ls_cdr(h);
-}
-
-int ls_room_for(int size, list_stack ls){
-  return (ptr )(ls +ls->size) > (ptr )(ls->head+2*sizeof(ptr)+size);
-}
-
-list_stack ls_cons(void * thing, ls_uint size, list_stack ls) {
-  if (!ls_room_for(size,ls)){
-    warn("Data is too large for stack\n");
-    return NULL;
+size_t ls_header_size(void)
+{
+  size_t aligned = 0;
+  if (ls_align_checked(sizeof(struct ls_header), &aligned)) {
+    return aligned;
+  } else {
+    return 0;
   }
-  ptr head = ls->head;
-  ptr start = head + sizeof(ptr);
-  if ((ls_uint)start %ALIGN !=0 ) {
-    warn("Warning! Destination address not aligned!\n");
-  }
-   if ( (ls_uint)thing%ALIGN!=0) {
-    warn("Warning! Source address not aligned!\n");
-  }
-  memcpy(start, thing, size);
-  ptr* new_head = (ptr *)((ls_uint)start + (ls_uint)size);
-  *new_head = head;
-  ls->head = new_head;
-  return ls;
 }
 
-/* Create a list with an empty data section.  Returns the pointer to the empty data section */
-ptr ls_cons_blank(ls_uint size, list_stack ls){
-  if (!ls_room_for(size,ls)){
-    warn("Data is too large for stack\n");
-    return NULL;
+size_t ls_entry_overhead(void)
+{
+  return ls_node_header_size();
+}
+
+size_t ls_align_size(size_t size)
+{
+  size_t aligned = 0;
+  if (ls_align_checked(size, &aligned)) {
+    return aligned;
+  } else {
+    return 0;
   }
-  
-  if (( ls_uint )size %ALIGN !=0 ) {
-    warn("Warning! Size is not a multiple of alignment(%d)!\n", ALIGN);
+}
+
+list_stack new_list_stack(ptr mem, size_t size)
+{
+  if (mem == 0) {
+    return 0;
+  } else if (((uintptr_t)mem % LS_ALIGNMENT) != 0) {
+    return 0;
+  } else if (size < ls_header_size()) {
+    return 0;
+  } else {
+    list_stack ls = (list_stack)mem;
+    ls->size = size;
+    ls->used = 0;
+    ls->head = 0;
+    return ls;
   }
-  ptr head = ls->head;
-  ptr start = head + sizeof(ptr);
-  if (( ls_uint )start %ALIGN !=0 ) {
-    warn("Warning! Destination address not aligned!\n");
+}
+
+ptr ls_start(list_stack ls)
+{
+  if (ls == 0) {
+    return 0;
+  } else {
+    return ls->head;
   }
-  ptr* new_head = (ptr *)((ptr)start + size);
-  *new_head = head;
-  ls->head = new_head;
-  return start;
 }
 
-void ls_test() {
-  char mem[1000];
-  list_stack ls   = new_list_stack(mem, 1000);
-  const char  hello_world[]  = "Hello World.   ";
-  const char  greet[] =        "How are you today? ";
-
-  //Allocate list element, we write into the empty space 
-  char * target = (char *)ls_cons_blank(strlen(greet)+1, ls);
-  strcpy(target, greet);
-
-  //Allocate new list element, and copy the source data into the list_stack
-  ls_cons((void *)hello_world, strlen(hello_world) + 1, ls);
-
-  for (ptr i = ls_start(ls); !ls_is_end(i); i=ls_tail(i)){
-    //ls_head returns a pointer to the data for element i
-    warn("%s", (char *)ls_head(i));
+ptr ls_car(ptr node)
+{
+  if (node == 0) {
+    return 0;
+  } else {
+    return node + ls_node_header_size();
   }
-  warn("\n");
 }
 
-
-
-void setup() {
-  // put your setup code here, to run once:
-#ifdef ARDUINO
-  Serial.begin(9600);
-  Serial.print("Starting tests....\n");
-  Serial.print("Pointer size is: ");
-  Serial.println(sizeof(ptr));
-  Serial.print("ls_uint size is: ");
-  Serial.println(sizeof(ls_uint));
-#endif
-  ls_test();
+ptr ls_head(ptr node)
+{
+  return ls_car(node);
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
-
+ptr ls_cdr(ptr node)
+{
+  if (node == 0) {
+    return 0;
+  } else {
+    struct ls_node *entry = (struct ls_node *)node;
+    return entry->previous;
+  }
 }
 
-#ifdef TEST
-int main() {
-	ls_test();
+ptr ls_tail(ptr node)
+{
+  return ls_cdr(node);
 }
-#endif
+
+int ls_is_end(ptr node)
+{
+  return node == 0;
+}
+
+size_t ls_data_size(ptr node)
+{
+  if (node == 0) {
+    return 0;
+  } else {
+    struct ls_node *entry = (struct ls_node *)node;
+    return entry->size;
+  }
+}
+
+int ls_room_for(size_t size, list_stack ls)
+{
+  size_t aligned = 0;
+  size_t entry_size = 0;
+  size_t remaining = 0;
+  if (!ls_has_valid_bounds(ls)) {
+    return 0;
+  } else if (!ls_align_checked(size, &aligned)) {
+    return 0;
+  } else if (aligned > SIZE_MAX - ls_node_header_size()) {
+    return 0;
+  } else {
+    entry_size = ls_node_header_size() + aligned;
+    remaining = ls->size - ls_header_size() - ls->used;
+    return entry_size <= remaining;
+  }
+}
+
+ptr ls_cons_blank(size_t size, list_stack ls)
+{
+  size_t aligned = 0;
+  size_t entry_size = 0;
+  ptr node = 0;
+  struct ls_node *entry = 0;
+  if (!ls_room_for(size, ls)) {
+    return 0;
+  } else if (!ls_align_checked(size, &aligned)) {
+    return 0;
+  } else {
+    entry_size = ls_node_header_size() + aligned;
+    node = ls_data_start(ls) + ls->used;
+    entry = (struct ls_node *)node;
+    entry->previous = ls->head;
+    entry->size = size;
+    ls->used += entry_size;
+    ls->head = node;
+    return node + ls_node_header_size();
+  }
+}
+
+list_stack ls_cons(const_ptr thing, size_t size, list_stack ls)
+{
+  ptr target = 0;
+  if (thing == 0 && size != 0) {
+    return 0;
+  } else {
+    target = ls_cons_blank(size, ls);
+    if (target == 0) {
+      return 0;
+    } else {
+      if (size != 0) {
+        memcpy(target, thing, size);
+      }
+      return ls;
+    }
+  }
+}
+
+int ls_pop(list_stack ls)
+{
+  ptr node = 0;
+  struct ls_node *entry = 0;
+  if (!ls_has_valid_bounds(ls)) {
+    return 0;
+  } else if (ls->head == 0) {
+    return 0;
+  } else {
+    node = ls->head;
+    entry = (struct ls_node *)node;
+    ls->head = entry->previous;
+    ls->used = (size_t)(node - ls_data_start(ls));
+    return 1;
+  }
+}
+
+void ls_clear(list_stack ls)
+{
+  if (ls == 0) {
+    return;
+  } else {
+    ls->used = 0;
+    ls->head = 0;
+  }
+}
+
+size_t ls_capacity(list_stack ls)
+{
+  if (ls == 0 || ls->size < ls_header_size()) {
+    return 0;
+  } else {
+    return ls->size - ls_header_size();
+  }
+}
+
+size_t ls_used(list_stack ls)
+{
+  if (!ls_has_valid_bounds(ls)) {
+    return 0;
+  } else {
+    return ls->used;
+  }
+}
+
+size_t ls_available(list_stack ls)
+{
+  size_t remaining = 0;
+  size_t overhead = ls_node_header_size();
+  if (!ls_has_valid_bounds(ls)) {
+    return 0;
+  } else {
+    remaining = ls->size - ls_header_size() - ls->used;
+    if (remaining < overhead) {
+      return 0;
+    } else {
+      return ls_align_down(remaining - overhead);
+    }
+  }
+}

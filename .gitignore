@@ -17,6 +17,7 @@
 *.pch
 
 # Libraries
+dist/
 *.lib
 *.a
 *.la
@@ -29,6 +30,8 @@
 *.dylib
 
 # Executables
+list_stack_demo
+list_stack_tests
 *.exe
 *.out
 *.app
