@@ -1,20 +1,8 @@
 # listStack
 
-`listStack` is a small C stack/list that stores variable-size byte entries inside caller-owned memory. It does not allocate or free memory after initialization, so it fits embedded code and fixed-buffer programs.
+`listStack` is a small C stack that keeps an entire linked list inside the stack.  It is in effect an arena allocator for linked lists. It's handy for embedded work as it doesn't allocate memory, it works entire within a pre-allocated arena.
 
-## Memory Model
 
-Call `new_list_stack(mem, size)` with an aligned memory buffer. The library writes a control header at the start of the buffer, then stores entries sequentially after it.
-
-Each entry contains:
-
-- entry metadata;
-- the user payload;
-- padding so the next entry remains pointer-aligned.
-
-The newest entry is the list head. `ls_pop` removes the newest entry and makes that space available again. `ls_clear` drops every entry and reuses the whole payload area.
-
-Returned payload pointers point into the caller-owned buffer. They remain valid until the entry is popped, cleared, or overwritten by a later push after popping.
 
 ## API
 
@@ -87,6 +75,20 @@ Commands:
 - `./run.sh` is an alias for the demo.
 - `./install.sh` installs the header and static library into `dist/`.
 
+## Memory Model
+
+Call `new_list_stack(mem, size)` with an aligned memory buffer. The library writes a control header at the start of the buffer, then stores entries sequentially after it.
+
+Each entry contains:
+
+- entry metadata;
+- the user payload;
+- padding so the next entry remains pointer-aligned.
+
+The newest entry is the list head. `ls_pop` removes the newest entry and makes that space available again. `ls_clear` drops every entry and reuses the whole payload area.
+
+Returned payload pointers point into the caller-owned buffer. They remain valid until the entry is popped, cleared, or overwritten by a later push after popping.
+
 ## License
 
-This project is licensed under GPL-3.0-only. For broad embedded-library reuse, a permissive license such as MIT, BSD, or Apache-2.0 may be easier for downstream users.
+This project is licensed under GPL-3.0-only. 
