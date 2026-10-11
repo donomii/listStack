@@ -9,8 +9,21 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        cc: [gcc, clang]
+        include:
+          - cc: gcc
+            cxx: g++
+          - cc: clang
+            cxx: clang++
     steps:
       - uses: actions/checkout@v4
       - run: make CC=${{ matrix.cc }}
-      - run: make test CC=${{ matrix.cc }}
+      - run: make test CC=${{ matrix.cc }} CXX=${{ matrix.cxx }}
+      - run: |
+          ./run.sh
+          test ! -e run
+      - run: >-
+          make -B test CC=${{ matrix.cc }} CXX=${{ matrix.cxx }}
+          CFLAGS='-std=c11 -O2 -Wall -Wextra -Wpedantic -Werror
+          -fsanitize=address,undefined -fno-sanitize-recover=all'
+          CXXFLAGS='-std=c++11 -O2 -Wall -Wextra -Wpedantic -Werror
+          -fsanitize=address,undefined -fno-sanitize-recover=all'

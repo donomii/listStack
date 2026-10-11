@@ -1,7 +1,11 @@
 CC ?= cc
 CFLAGS ?= -std=c11 -Wall -Wextra -Wpedantic -Werror
+CXX ?= c++
+CXXFLAGS ?= -std=c++11 -Wall -Wextra -Wpedantic -Werror
 AR ?= ar
 PREFIX ?= $(CURDIR)/dist
+
+.PHONY: all run demo test install
 
 all: liblist_stack.a list_stack_demo list_stack_tests
 
@@ -23,13 +27,17 @@ list_stack_demo: list_stack_demo.o liblist_stack.a
 list_stack_tests: list_stack_tests.o liblist_stack.a
 	$(CC) $(CFLAGS) list_stack_tests.o liblist_stack.a -o list_stack_tests
 
+list_stack_cpp_tests: list_stack_cpp_tests.cpp list_stack.h liblist_stack.a
+	$(CXX) $(CXXFLAGS) list_stack_cpp_tests.cpp liblist_stack.a -o list_stack_cpp_tests
+
 run: demo
 
 demo: list_stack_demo
 	./list_stack_demo
 
-test: list_stack_tests
+test: list_stack_tests list_stack_cpp_tests
 	./list_stack_tests
+	./list_stack_cpp_tests
 
 install: liblist_stack.a list_stack.h
 	mkdir -p "$(PREFIX)/include" "$(PREFIX)/lib"

@@ -7,6 +7,10 @@ typedef unsigned char *ptr;
 typedef const unsigned char *const_ptr;
 typedef struct ls_header *list_stack;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 list_stack new_list_stack(ptr mem, size_t size);
 ptr ls_start(list_stack ls);
 ptr ls_car(ptr node);
@@ -27,5 +31,9 @@ size_t ls_align_size(size_t size);
 size_t ls_capacity(list_stack ls);
 size_t ls_used(list_stack ls);
 size_t ls_available(list_stack ls);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
