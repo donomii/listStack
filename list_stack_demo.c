@@ -10,7 +10,7 @@
 
 typedef union demo_buffer
 {
-  long double alignment;
+  max_align_t alignment;
   unsigned char bytes[1000];
 } demo_buffer;
 
