@@ -39,7 +39,7 @@ Include `list_stack.h`.
 
 typedef union buffer
 {
-  long double alignment;
+  max_align_t alignment;
   unsigned char bytes[1000];
 } buffer;
 
@@ -49,9 +49,17 @@ int main(void)
   list_stack ls = new_list_stack(mem.bytes, sizeof(mem.bytes));
   const char hello_world[] = "Hello World.   ";
   const char greet[] = "How are you today? ";
+  if (ls == 0) {
+    return 1;
+  }
   char *target = (char *)ls_cons_blank(strlen(greet) + 1, ls);
+  if (target == 0) {
+    return 1;
+  }
   strcpy(target, greet);
-  ls_cons((const_ptr)hello_world, strlen(hello_world) + 1, ls);
+  if (ls_cons((const_ptr)hello_world, strlen(hello_world) + 1, ls) == 0) {
+    return 1;
+  }
   for (ptr i = ls_start(ls); !ls_is_end(i); i = ls_tail(i)) {
     printf("%s", (const char *)ls_head(i));
   }
@@ -79,13 +87,13 @@ Commands:
 
 ## Memory Model
 
-Call `new_list_stack(mem, size)` with an aligned memory buffer. The library writes a control header at the start of the buffer, then stores entries sequentially after it.
+Call `new_list_stack(mem, size)` with a buffer aligned to `max_align_t`, as reported by `ls_alignment()`. The library writes a control header at the start of the buffer, then stores entries sequentially after it.
 
 Each entry contains:
 
 - entry metadata;
 - the user payload;
-- padding so the next entry remains pointer-aligned.
+- padding so the next entry remains aligned to `max_align_t`.
 
 The newest entry is the list head. `ls_pop` removes the newest entry and makes that space available again. `ls_clear` drops every entry and reuses the whole payload area.
 
