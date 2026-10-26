@@ -27,3 +27,19 @@ jobs:
           -fsanitize=address,undefined -fno-sanitize-recover=all'
           CXXFLAGS='-std=c++11 -O2 -Wall -Wextra -Wpedantic -Werror
           -fsanitize=address,undefined -fno-sanitize-recover=all'
+
+  arduino:
+    runs-on: ubuntu-latest
+    env:
+      ARDUINO_DIRECTORIES_DATA: ${{ github.workspace }}/build/arduino/data
+      ARDUINO_DIRECTORIES_DOWNLOADS: ${{ github.workspace }}/build/arduino/downloads
+      ARDUINO_DIRECTORIES_USER: ${{ github.workspace }}/build/arduino/user
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+        with:
+          version: "1.1.1"
+      - run: |
+          arduino-cli core update-index
+          arduino-cli core install arduino:avr@1.8.6
+      - run: ./test-arduino.sh

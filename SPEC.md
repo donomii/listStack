@@ -57,6 +57,12 @@ Return the payload for a blank push, or the stack handle for a copying push.
 
 `./build.sh` builds the C library, demo, and C tests. `./test.sh` runs the C regressions and a C++ caller linked to the C library. `./run.sh` and `./demo.sh` run the demo. `./install.sh` installs the header and library under the local `dist/` directory by default.
 
+The Arduino demo uses the same C list implementation and demo routine. Its serial output and `setup`/`loop` entry points are compiled as C++ and communicate with the C routine through C linkage. It prints the two greeting strings at 9600 baud once during setup; loop performs no work. The host demo continues to print to standard output.
+
+`./test-arduino.sh` compiles the demo for an Arduino Uno using an already installed Arduino CLI and AVR core; it does not download dependencies or upload to hardware. It stages the sketch and compiler outputs under `build/arduino/`. `ARDUINO_CLI` defaults to `arduino-cli` and selects the executable; `ARDUINO_FQBN` defaults to `arduino:avr:uno` and selects the board. Override either as a make variable when invoking `make test-arduino`. CI installs Arduino CLI 1.1.1 and AVR core 1.8.6 separately before running the compile check.
+
 Make action targets always execute when requested and do not generate executables named after the actions. `CC` and `CXX` select the C and C++ compilers. `CFLAGS` defaults to strict C11 warnings, and `CXXFLAGS` defaults to `-std=c++11 -Wall -Wextra -Wpedantic -Werror`; override them as make variables to change compilation settings. `AR` selects the archiver and `PREFIX` selects the installation directory.
 
 Regression coverage includes overlapping arena sources, unchanged bytes after rejected pushes, zero-length and variable-length alignment, typed allocator-backed payloads, and C++ linkage. CI runs GCC and Clang, including optimized address and undefined-behavior sanitizer builds.
+
+On targets with one-byte alignment, a buffer beginning at the next byte is valid and must initialize and operate normally. On targets requiring stricter alignment, the same offset is rejected without changing the buffer. Published examples provide `max_align_t` alignment and check initialization and pushes before accessing payloads.

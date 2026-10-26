@@ -1,12 +1,9 @@
 #include "list_stack.h"
+#include "list_stack_demo.h"
 
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
-
-#ifdef ARDUINO
-#include <Arduino.h>
-#endif
 
 typedef union demo_buffer
 {
@@ -14,14 +11,12 @@ typedef union demo_buffer
   unsigned char bytes[1000];
 } demo_buffer;
 
+#ifndef ARDUINO
 static void demo_print(const char *text)
 {
-#ifdef ARDUINO
-  Serial.print(text);
-#else
   printf("%s", text);
-#endif
 }
+#endif
 
 int list_stack_demo_run(void)
 {
@@ -55,17 +50,7 @@ int list_stack_demo_run(void)
   }
 }
 
-#ifdef ARDUINO
-void setup(void)
-{
-  Serial.begin(9600);
-  list_stack_demo_run();
-}
-
-void loop(void)
-{
-}
-#else
+#ifndef ARDUINO
 int main(void)
 {
   return list_stack_demo_run();

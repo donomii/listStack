@@ -262,10 +262,26 @@ static int test_typed_allocated_payload(void)
 static int test_invalid_inputs(void)
 {
   test_buffer buffer;
+  test_buffer offset_buffer;
   list_stack ls = fresh_stack(&buffer);
+  list_stack offset_stack = 0;
+  memset(offset_buffer.bytes, 0xA5, sizeof(offset_buffer.bytes));
+  offset_stack = new_list_stack(offset_buffer.bytes + 1, sizeof(offset_buffer.bytes) - 1);
   EXPECT(new_list_stack(0, sizeof(buffer.bytes)) == 0);
   EXPECT(new_list_stack(buffer.bytes, ls_header_size() - 1) == 0);
-  EXPECT(new_list_stack(buffer.bytes + 1, sizeof(buffer.bytes) - 1) == 0);
+  if (ls_alignment() == 1) {
+    EXPECT(offset_stack != 0);
+    EXPECT(ls_used(offset_stack) == 0);
+    EXPECT(ls_is_end(ls_start(offset_stack)));
+    EXPECT(ls_capacity(offset_stack) == sizeof(offset_buffer.bytes) - 1 - ls_header_size());
+    EXPECT(ls_cons(0, 0, offset_stack) == offset_stack);
+    EXPECT(ls_pop(offset_stack) == 1);
+  } else {
+    EXPECT(offset_stack == 0);
+    for (size_t i = 0; i < sizeof(offset_buffer.bytes); i++) {
+      EXPECT(offset_buffer.bytes[i] == 0xA5);
+    }
+  }
   EXPECT(ls != 0);
   EXPECT(ls_cons(0, 1, ls) == 0);
   EXPECT(ls_cons(0, 0, ls) == ls);
